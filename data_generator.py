@@ -193,3 +193,4 @@ if option == "variables" or option is None:
       patient[to_field] = val_array
 
     patient.to_csv('./data/x/{}.csv'.format(hid), index=False)
+    print(f"record index={i} with hid={hid} is saved to data folder")
