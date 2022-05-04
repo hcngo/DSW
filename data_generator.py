@@ -131,7 +131,7 @@ if option == "variables" or option is None:
   labs_hids = list(vitals_df[HID])
   labs_hids.sort()
   print("Number of Hospital Admission IDS: " + str(len(labs_hids)))
-  for hid in (labs_hids):
+  for hid in labs_hids:
     # for each hospital admission id, we want to save the patient record containing all the variables
     patient_vitals = vitals_df[vitals_df[HID] == hid]
     patient_labs = labs_df[labs_df[HID] == hid]
