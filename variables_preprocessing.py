@@ -1,5 +1,5 @@
 import pandas as pd
-from columns import HID, ICUID
+from constants import HID, ICUID
 
 # hadm ids for sepsis patient in MIMIC-III
 icu2hadm = pd.read_json('./data/icu_hadm_dict.json', typ='series').to_dict()

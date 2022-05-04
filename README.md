@@ -166,3 +166,6 @@ python train_synthetic.py --observation_window 30 --epochs 64 --batch-size 128 -
 
 - ITE estimation metrics: PEHE, ATE
 - Factual prediction metric: RMSE
+
+#### Training on GPU capable machine
+
