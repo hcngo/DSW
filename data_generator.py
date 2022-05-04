@@ -4,7 +4,7 @@ import pandas as pd
 import numpy as np
 import json
 from datetime import datetime
-from constants import ICUID, HID, CHARTTIME, NUMBER_OF_INTERVALS, TIME_STEP
+from constants import ICUID, HID, CHARTTIME, NUMBER_OF_INTERVALS, TIME_STEP, MAPPING, ALL_MAPPING
 import sys
 
 option = sys.argv[1] if len(sys.argv) > 1 else None
@@ -115,9 +115,23 @@ if option == "variables" or option is None:
   gcs_df[HID] = gcs_df[ICUID].map(icu2hadm)
   uo_df[HID] = uo_df[ICUID].map(icu2hadm)
 
+  # Use HID as the index
+  vitals_df.set_index(HID)
+  labs_df.set_index(HID)
+  gcs_df.set_index(HID)
+  uo_df.set_index(HID)
+
+  # sort based on HID. Sorting helps with filtering later on
+  vitals_df.sort_index()
+  labs_df.sort_index()
+  gcs_df.sort_index()
+  uo_df.sort_index()
+
   # list of hids in the vitals df. We use vitals as it contains the most frequently gathered ICU data
   labs_hids = list(vitals_df[HID])
-  for hid in labs_hids:
+  labs_hids.sort()
+  print("Number of Hospital Admission IDS: " + str(len(labs_hids)))
+  for hid in (labs_hids):
     # for each hospital admission id, we want to save the patient record containing all the variables
     patient_vitals = vitals_df[vitals_df[HID] == hid]
     patient_labs = labs_df[labs_df[HID] == hid]
@@ -132,18 +146,22 @@ if option == "variables" or option is None:
 
     # patient records corresponding to hid to be saved
     patient = pd.DataFrame()
-    patient["step"] = range(NUMBER_OF_INTERVALS)
 
-    # variable arrays
-    hemoglobins = []
+    # variable arrays keyed by destination column names
+    values = {k:[] for k in ALL_MAPPING.values()}
 
     # get the first charttime in vitals to get the ICU admission time
     icu_time = patient_vitals[CHARTTIME].min().replace(minute=0, second=0, microsecond=0)
+
+    # times
+    time_array = []
     
     # Now from the ICU admission time, get the next time steps
     for i in range(NUMBER_OF_INTERVALS):
       start_time = (icu_time + i * TIME_STEP)
       end_time = (icu_time + (i + 1) * TIME_STEP)
+
+      time_array.append(start_time)
 
       # data within this time interval
       labs = patient_labs[(patient_labs[CHARTTIME] >= start_time) & (patient_labs[CHARTTIME] < end_time)]
@@ -152,9 +170,16 @@ if option == "variables" or option is None:
       uo = patient_uo[(patient_uo[CHARTTIME] >= start_time) & (patient_uo[CHARTTIME] < end_time)]
 
       # TODO calculate all the variables within this time interval for this patient record and save to disk
-      hemo = labs["HEMOGLOBIN"].mean() if labs["HEMOGLOBIN"].size > 0 else (labs_means["HEMOGLOBIN"] if labs_means["HEMOGLOBIN"].size > 0 else None)
-      hemoglobins.append(hemo)
+      for data_type, mapping in MAPPING.items():
+        data = labs if data_type == "labs" else vitals if data_type == "vitals" else gcs if data_type == "gcs" else uo if data_type == "uo" else None
+        overall_mean = labs_means if data_type == "labs" else vitals_means if data_type == "vitals" else gcs_means if data_type == "gcs" else uo_means if data_type == "uo" else None
+        for from_field, to_field in mapping.items():
+          v = data[from_field].mean() if data[from_field].size > 0 else overall_mean[from_field] if overall_mean[from_field].size > 0 else None
+          values[to_field].append(v)
     
-    patient["hemoglobin"] = hemoglobins
+    patient["step"] = range(NUMBER_OF_INTERVALS)
+    patient["time"] = time_array
+    for to_field, val_array in values.items():
+      patient[to_field] = val_array
 
     patient.to_csv('./data/x/{}.csv'.format(hid), index=False)
