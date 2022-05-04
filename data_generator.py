@@ -97,6 +97,8 @@ if option == "static" or option is None:
     np.save('./data/static/{}.static.npy'.format(id), patient.to_numpy()[0])
 
 if option == "variables" or option is None:
+  start_idx = int(sys.argv[2]) if len(sys.argv) > 2 else None
+  end_idx = int(sys.argv[3]) if len(sys.argv) > 3 else None
 
   # # ------- generating time variable x/{ID}.csv files ------#
   vitals_df = pd.read_csv('./data/pivoted_vitals.csv', parse_dates=[CHARTTIME])
@@ -128,10 +130,16 @@ if option == "variables" or option is None:
   uo_df.sort_index()
 
   # list of hids in the vitals df. We use vitals as it contains the most frequently gathered ICU data
-  labs_hids = list(vitals_df[HID])
+  labs_hids = list(set(vitals_df[HID]))
   labs_hids.sort()
   print("Number of Hospital Admission IDS: " + str(len(labs_hids)))
-  for hid in labs_hids:
+  if start_idx is None:
+    start_idx = 0
+  if end_idx is None:
+    end_idx = len(labs_hids)
+  print(f"Process sample from start index {start_idx} to end index {end_idx} for {end_idx - start_idx} samples")
+  for i in range(start_idx, end_idx):
+    hid = labs_hids[i]
     # for each hospital admission id, we want to save the patient record containing all the variables
     patient_vitals = vitals_df[vitals_df[HID] == hid]
     patient_labs = labs_df[labs_df[HID] == hid]
@@ -174,7 +182,9 @@ if option == "variables" or option is None:
         data = labs if data_type == "labs" else vitals if data_type == "vitals" else gcs if data_type == "gcs" else uo if data_type == "uo" else None
         overall_mean = labs_means if data_type == "labs" else vitals_means if data_type == "vitals" else gcs_means if data_type == "gcs" else uo_means if data_type == "uo" else None
         for from_field, to_field in mapping.items():
-          v = data[from_field].mean() if data[from_field].size > 0 else overall_mean[from_field] if overall_mean[from_field].size > 0 else None
+          v = data[from_field].mean()
+          if np.isnan(v):
+            v = overall_mean[from_field]
           values[to_field].append(v)
     
     patient["step"] = range(NUMBER_OF_INTERVALS)
