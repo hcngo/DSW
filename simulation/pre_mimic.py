@@ -41,13 +41,15 @@ n_X_static_features = 12
 
 X = []
 used_ID = []
-for ii, ID in tqdm(enumerate(hadm2icu.keys())):
-    tmp = pd.read_csv(data_dir+'/x/{}.csv'.format(ID))
-    tmp = tmp[(tmp['time'] > 0) & (tmp['time'] < 33)]
-    if len(tmp) == 11:
-        icu = hadm2icu[ID]
-        used_ID.append(icu)
-        X.append(tmp[var][:-1].to_numpy())
+for ii, hid in tqdm(enumerate(hadm2icu.keys())):
+    x_file = data_dir+'/x/{}.csv'.format(hid)
+    if not os.path.exists(x_file):
+        print(f"skip hid={hid} - no input file {x_file}")
+    tmp = pd.read_csv(x_file)
+    
+    icu = hadm2icu[hid]
+    used_ID.append(icu)
+    X.append(tmp[var].to_numpy())
 
 X_new= np.zeros(shape=(len(used_ID), observation_window//3, n_X_features))
 

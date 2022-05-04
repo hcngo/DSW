@@ -138,8 +138,8 @@ if option == "variables" or option is None:
   if end_idx is None:
     end_idx = len(labs_hids)
   print(f"Process sample from start index {start_idx} to end index {end_idx} for {end_idx - start_idx} samples")
-  for i in range(start_idx, end_idx):
-    hid = labs_hids[i]
+  for record_idx in range(start_idx, end_idx):
+    hid = labs_hids[record_idx]
     # for each hospital admission id, we want to save the patient record containing all the variables
     patient_vitals = vitals_df[vitals_df[HID] == hid]
     patient_labs = labs_df[labs_df[HID] == hid]
@@ -193,4 +193,4 @@ if option == "variables" or option is None:
       patient[to_field] = val_array
 
     patient.to_csv('./data/x/{}.csv'.format(hid), index=False)
-    print(f"record index={i} with hid={hid} is saved to data folder")
+    print(f"record index={record_idx} with hid={hid} is saved to data folder")
