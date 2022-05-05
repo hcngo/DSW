@@ -4,7 +4,7 @@ import pandas as pd
 import numpy as np
 import json
 from datetime import datetime
-from constants import ICUID, HID, CHARTTIME, NUMBER_OF_INTERVALS, TIME_STEP
+from constants import ICUID, HID, CHARTTIME, NUMBER_OF_INTERVALS, TIME_STEP, MAPPING, ALL_MAPPING
 import sys
 
 option = sys.argv[1] if len(sys.argv) > 1 else None
@@ -51,7 +51,7 @@ if option == "treatments" or option is None:
         patient = np.append(patient, zeros)
       elif len(patient) > 10:
         patient = patient[:10]
-      patient = patient.reshape((10, 1))
+      # patient = patient.reshape((10, 1))
       np.save('./data/treatment/{}/{}.npy'.format(treatment_option, id), patient)
 
 # hadm ids for sepsis patient in MIMIC-III
@@ -76,12 +76,14 @@ if option == "static" or option is None:
   height_weight_df[HID] = height_weight_df[ICUID].map(icu2hadm)
 
   # calculate race variable
-  detail_df['white'] = detail_df['ethnicity_grouped']=='white'
-  detail_df['black'] = detail_df['ethnicity_grouped']=='black'
-  detail_df['hispanic'] = detail_df['ethnicity_grouped']=='hispanic'
-  detail_df['asian'] = detail_df['ethnicity_grouped']=='asian'
-  detail_df['other'] = ~(detail_df['white'] | detail_df['black'] | detail_df['hispanic'] | detail_df['asian'])
+  detail_df['white'] = detail_df['ethnicity_grouped'].apply(lambda x: 1 if x =='white' else 0)
+  detail_df['black'] = detail_df['ethnicity_grouped'].apply(lambda x: 1 if x =='black' else 0)
+  detail_df['hispanic'] = detail_df['ethnicity_grouped'].apply(lambda x: 1 if x =='hispanic' else 0)
+  detail_df['asian'] = detail_df['ethnicity_grouped'].apply(lambda x: 1 if x =='asian' else 0)
+  detail_df['other'] = detail_df['ethnicity_grouped'].apply(lambda x: 1 if not (x =='asian' or x=='hispanic' or x=='black' or x=='white') else 0)
   detail_df.drop(columns=['ethnicity_grouped'], inplace=True)
+
+  detail_df["gender"] =  detail_df["gender"].apply(lambda x: 1 if x == "M" else 0 if x == "F" else -1)
 
   # calculate bmi variable
   height_weight_df['bmi'] = height_weight_df['weight_first'] / (height_weight_df['height_first']/100)**2
@@ -97,6 +99,8 @@ if option == "static" or option is None:
     np.save('./data/static/{}.static.npy'.format(id), patient.to_numpy()[0])
 
 if option == "variables" or option is None:
+  start_idx = int(sys.argv[2]) if len(sys.argv) > 2 else None
+  end_idx = int(sys.argv[3]) if len(sys.argv) > 3 else None
 
   # # ------- generating time variable x/{ID}.csv files ------#
   vitals_df = pd.read_csv('./data/pivoted_vitals.csv', parse_dates=[CHARTTIME])
@@ -115,9 +119,29 @@ if option == "variables" or option is None:
   gcs_df[HID] = gcs_df[ICUID].map(icu2hadm)
   uo_df[HID] = uo_df[ICUID].map(icu2hadm)
 
+  # Use HID as the index
+  vitals_df.set_index(HID)
+  labs_df.set_index(HID)
+  gcs_df.set_index(HID)
+  uo_df.set_index(HID)
+
+  # sort based on HID. Sorting helps with filtering later on
+  vitals_df.sort_index()
+  labs_df.sort_index()
+  gcs_df.sort_index()
+  uo_df.sort_index()
+
   # list of hids in the vitals df. We use vitals as it contains the most frequently gathered ICU data
-  labs_hids = list(vitals_df[HID])
-  for hid in labs_hids:
+  labs_hids = list(set(vitals_df[HID]))
+  labs_hids.sort()
+  print("Number of Hospital Admission IDS: " + str(len(labs_hids)))
+  if start_idx is None:
+    start_idx = 0
+  if end_idx is None:
+    end_idx = len(labs_hids)
+  print(f"Process sample from start index {start_idx} to end index {end_idx} for {end_idx - start_idx} samples")
+  for record_idx in range(start_idx, end_idx):
+    hid = labs_hids[record_idx]
     # for each hospital admission id, we want to save the patient record containing all the variables
     patient_vitals = vitals_df[vitals_df[HID] == hid]
     patient_labs = labs_df[labs_df[HID] == hid]
@@ -132,18 +156,22 @@ if option == "variables" or option is None:
 
     # patient records corresponding to hid to be saved
     patient = pd.DataFrame()
-    patient["step"] = range(NUMBER_OF_INTERVALS)
 
-    # variable arrays
-    hemoglobins = []
+    # variable arrays keyed by destination column names
+    values = {k:[] for k in ALL_MAPPING.values()}
 
     # get the first charttime in vitals to get the ICU admission time
     icu_time = patient_vitals[CHARTTIME].min().replace(minute=0, second=0, microsecond=0)
+
+    # times
+    time_array = []
     
     # Now from the ICU admission time, get the next time steps
     for i in range(NUMBER_OF_INTERVALS):
       start_time = (icu_time + i * TIME_STEP)
       end_time = (icu_time + (i + 1) * TIME_STEP)
+
+      time_array.append(start_time)
 
       # data within this time interval
       labs = patient_labs[(patient_labs[CHARTTIME] >= start_time) & (patient_labs[CHARTTIME] < end_time)]
@@ -152,9 +180,19 @@ if option == "variables" or option is None:
       uo = patient_uo[(patient_uo[CHARTTIME] >= start_time) & (patient_uo[CHARTTIME] < end_time)]
 
       # TODO calculate all the variables within this time interval for this patient record and save to disk
-      hemo = labs["HEMOGLOBIN"].mean() if labs["HEMOGLOBIN"].size > 0 else (labs_means["HEMOGLOBIN"] if labs_means["HEMOGLOBIN"].size > 0 else None)
-      hemoglobins.append(hemo)
+      for data_type, mapping in MAPPING.items():
+        data = labs if data_type == "labs" else vitals if data_type == "vitals" else gcs if data_type == "gcs" else uo if data_type == "uo" else None
+        overall_mean = labs_means if data_type == "labs" else vitals_means if data_type == "vitals" else gcs_means if data_type == "gcs" else uo_means if data_type == "uo" else None
+        for from_field, to_field in mapping.items():
+          v = data[from_field].mean()
+          if np.isnan(v):
+            v = overall_mean[from_field]
+          values[to_field].append(v)
     
-    patient["hemoglobin"] = hemoglobins
+    patient["step"] = range(NUMBER_OF_INTERVALS)
+    patient["time"] = time_array
+    for to_field, val_array in values.items():
+      patient[to_field] = val_array
 
     patient.to_csv('./data/x/{}.csv'.format(hid), index=False)
+    print(f"record index={record_idx} with hid={hid} is saved to data folder")
