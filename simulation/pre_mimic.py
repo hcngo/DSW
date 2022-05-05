@@ -37,7 +37,7 @@ var = ['hemoglobin','heartrate','creatinine',
 
 n_classes = 1
 n_X_features = len(var)
-n_X_static_features = 12
+n_X_static_features = 13
 
 X = []
 used_ID = []
@@ -45,6 +45,7 @@ for ii, hid in tqdm(enumerate(hadm2icu.keys())):
     x_file = data_dir+'/x/{}.csv'.format(hid)
     if not os.path.exists(x_file):
         print(f"skip hid={hid} - no input file {x_file}")
+        continue
     tmp = pd.read_csv(x_file)
     
     icu = hadm2icu[hid]
