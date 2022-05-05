@@ -1,7 +1,5 @@
 import argparse
 import numpy as np
-import pandas as pd
-from sklearn.model_selection import train_test_split
 import torch
 import torch.nn.functional as F
 import torch.optim as optim
@@ -272,7 +270,7 @@ if __name__ == '__main__':
     parser.add_argument('--cuda-device', default=1, type=int, metavar='N',
                         help='which GPU to use')
 
-    parser.add_argument('--split_file', default='data_synthetic/data_mimic_mean_syn_{}/train_test_split.csv'.format(gamma), type=str, metavar='PATH',
+    parser.add_argument('--split_file', default='data_synthetic/data_syn_{}/train_test_split.csv'.format(gamma), type=str, metavar='PATH',
                         )
 
     args = parser.parse_args()
@@ -286,15 +284,11 @@ if __name__ == '__main__':
     print("observation window == >", args.observation_window)
     torch.manual_seed(666)
 
-    # train_test_split = np.loadtxt(args.split_file, delimiter=',', dtype=int)
-    train_test_split = pd.read_csv(args.split_file)
+    train_test_split = np.loadtxt(args.split_file, delimiter=',', dtype=int)
 
-    # train_iids = np.where(train_test_split[1]== 1)[0]
-    # val_iids = np.where(train_test_split[1] == 2)[0]
-    # test_iids = np.where(train_test_split[1] == 0)[0]
-    train_iids = list(train_test_split[train_test_split["indicator"] == 1]["id"])
-    val_iids = list(train_test_split[train_test_split["indicator"] == 2]["id"])
-    test_iids = list(train_test_split[train_test_split["indicator"] == 0]["id"])
+    train_iids = np.where(train_test_split==1)[0]
+    val_iids = np.where(train_test_split == 2)[0]
+    test_iids = np.where(train_test_split == 0)[0]
 
     # Datasets
     train_dataset = data_loader_syn.SyntheticDataset(train_iids, args.observation_window, treatment_option)
