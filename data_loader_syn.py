@@ -9,7 +9,7 @@ data_dir = 'data_synthetic/data_mimic_mean_syn_{}/'.format(gamma)
 
 # dataset meta data
 n_X_features = 25
-n_X_static_features = 13
+n_X_static_features = 12
 n_X_t_types = 1
 n_classes = 1
 
