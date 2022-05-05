@@ -51,7 +51,7 @@ if option == "treatments" or option is None:
         patient = np.append(patient, zeros)
       elif len(patient) > 10:
         patient = patient[:10]
-      patient = patient.reshape((10, 1))
+      # patient = patient.reshape((10, 1))
       np.save('./data/treatment/{}/{}.npy'.format(treatment_option, id), patient)
 
 # hadm ids for sepsis patient in MIMIC-III
