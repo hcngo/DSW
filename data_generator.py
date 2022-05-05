@@ -76,12 +76,14 @@ if option == "static" or option is None:
   height_weight_df[HID] = height_weight_df[ICUID].map(icu2hadm)
 
   # calculate race variable
-  detail_df['white'] = detail_df['ethnicity_grouped']=='white'
-  detail_df['black'] = detail_df['ethnicity_grouped']=='black'
-  detail_df['hispanic'] = detail_df['ethnicity_grouped']=='hispanic'
-  detail_df['asian'] = detail_df['ethnicity_grouped']=='asian'
-  detail_df['other'] = ~(detail_df['white'] | detail_df['black'] | detail_df['hispanic'] | detail_df['asian'])
+  detail_df['white'] = detail_df['ethnicity_grouped'].apply(lambda x: 1 if x =='white' else 0)
+  detail_df['black'] = detail_df['ethnicity_grouped'].apply(lambda x: 1 if x =='black' else 0)
+  detail_df['hispanic'] = detail_df['ethnicity_grouped'].apply(lambda x: 1 if x =='hispanic' else 0)
+  detail_df['asian'] = detail_df['ethnicity_grouped'].apply(lambda x: 1 if x =='asian' else 0)
+  detail_df['other'] = detail_df['ethnicity_grouped'].apply(lambda x: 1 if not (x =='asian' or x=='hispanic' or x=='black' or x=='white') else 0)
   detail_df.drop(columns=['ethnicity_grouped'], inplace=True)
+
+  detail_df["gender"] =  detail_df["gender"].apply(lambda x: 1 if x == "M" else 0 if x == "F" else -1)
 
   # calculate bmi variable
   height_weight_df['bmi'] = height_weight_df['weight_first'] / (height_weight_df['height_first']/100)**2
