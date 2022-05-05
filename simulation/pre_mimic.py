@@ -220,5 +220,5 @@ for t in tqdm(range(observation_window//step)):
 
 df = pd.DataFrame(np.array(split))
 
-df.to_csv('{}/train_test_split.csv'.format(dir), index=False, header=False)
+df.to_csv('{}/train_test_split.csv'.format(dir), index=False, header=["id", "indicator"])
 
