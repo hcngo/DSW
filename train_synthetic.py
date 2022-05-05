@@ -29,11 +29,11 @@ def trainInitIPTW(train_loader, val_loader,test_loader, model, epochs, optimizer
 
     # Train network
 
-    best_pehe_val = np.float('inf')
-    best_loss_val = np.float('inf')
-    best_pehe_test = np.float('inf')
-    best_ate_test = np.float('inf')
-    best_mse_test = np.float('inf')
+    best_pehe_val = np.float64('inf')
+    best_loss_val = np.float64('inf')
+    best_pehe_test = np.float64('inf')
+    best_ate_test = np.float64('inf')
+    best_mse_test = np.float64('inf')
     for epoch in range(epochs):
         ipw_epoch_losses = []
         outcome_epoch_losses = []
