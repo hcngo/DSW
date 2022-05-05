@@ -37,7 +37,7 @@ var = ['hemoglobin','heartrate','creatinine',
 
 n_classes = 1
 n_X_features = len(var)
-n_X_static_features = 13
+n_X_static_features = 12
 
 X = []
 used_ID = []
