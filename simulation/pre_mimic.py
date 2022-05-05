@@ -48,8 +48,7 @@ for ii, hid in tqdm(enumerate(hadm2icu.keys())):
         continue
     tmp = pd.read_csv(x_file)
     
-    icu = hadm2icu[hid]
-    used_ID.append(icu)
+    used_ID.append(hid)
     X.append(tmp[var].to_numpy())
 
 X_new= np.zeros(shape=(len(used_ID), observation_window//3, n_X_features))
@@ -59,18 +58,21 @@ for i in range(len(used_ID)):
 
 X_static = np.random.normal(0, 0.5, size=(len(used_ID),n_X_static_features))
 for j, ID in enumerate(used_ID):
-    if os.path.exists(data_dir + '/static/%d.static.npy' % ID):
-        X_static[j] = np.load(data_dir + '/static/%d.static.npy' % ID)
+    static_file = data_dir + '/static/%d.static.npy' % ID
+    if os.path.exists(static_file):
+        X_static[j] = np.load(static_file, allow_pickle=True)
     else:
-        print(ID)
+        print(f"No static file hid={ID} file={static_file}")
 X_static=np.nan_to_num(X_static)
 
 
 A = np.zeros(shape=(len(used_ID), observation_window//step))
 for ii, ID in tqdm(enumerate(used_ID)):
-    if os.path.exists('{}/treatment/{}/{}.npy'.format(data_dir, treatment_option, ID)):
-        A[ii, :] = np.load('{}/treatment/{}/{}.npy'.format(data_dir, treatment_option, ID))
+    treatment_file = '{}/treatment/{}/{}.npy'.format(data_dir, treatment_option, ID)
+    if os.path.exists(treatment_file):
+        A[ii, :] = np.load(treatment_file, allow_pickle=True)
     else:
+        print(f"No treatment file hid={ID} file={treatment_file}")
         A[ii, :] = np.zeros(observation_window//step)
 
 X_mean = np.mean(X_new, axis=(0,1))
