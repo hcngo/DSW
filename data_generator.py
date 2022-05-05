@@ -4,7 +4,7 @@ import pandas as pd
 import numpy as np
 import json
 from datetime import datetime
-from constants import ICUID, HID, CHARTTIME, NUMBER_OF_INTERVALS, TIME_STEP, MAPPING, ALL_MAPPING
+from constants import ICUID, HID, CHARTTIME, NUMBER_OF_INTERVALS, TIME_STEP, MAPPING, ALL_MAPPING, STATIC_VARIABLES
 import sys
 
 option = sys.argv[1] if len(sys.argv) > 1 else None
@@ -86,16 +86,15 @@ if option == "static" or option is None:
   detail_df["gender"] =  detail_df["gender"].apply(lambda x: 1 if x == "M" else 0 if x == "F" else -1)
 
   # calculate bmi variable
-  height_weight_df['bmi'] = height_weight_df['weight_first'] / (height_weight_df['height_first']/100)**2
+  height_weight_df['bmi'] = height_weight_df['weight_first'] / ((height_weight_df['height_first']/100)**2)
 
   # merging all time varying data into one df
   static_df = detail_df.merge(comorbid_df, on=HID, how='inner')
   static_df = static_df.merge(height_weight_df, on=HID, how='inner')
 
   # save each patient demographic details to static.npy file
-  for id in list(static_df[HID]):
-    patient = static_df[static_df[HID] == id]
-    patient = patient.loc[:, patient.columns!=HID]
+  for id in set(static_df[HID]):
+    patient = static_df[static_df[HID] == id][STATIC_VARIABLES]
     np.save('./data/static/{}.static.npy'.format(id), patient.to_numpy()[0])
 
 if option == "variables" or option is None:
