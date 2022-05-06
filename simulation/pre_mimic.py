@@ -195,7 +195,12 @@ for n in tqdm(range(len(used_ID))):
 
     y = [Y_f_norm[n], Y_cf_norm[n]]
 
-    # print(f"DEBUG hid={ID} x={x} x_static={x_static} a={a} y={y}")
+    # DETECT NaN
+    verifications = [x, x_static, a, y]
+    for i in range(len(verifications)):
+        for _, val in np.ndenumerate(verifications[i]):
+            if np.isnan(val):
+                raise Exception(f"hid={ID} i={i}")
 
     np.save(out_x_file, x)
     np.save(out_static_file, x_static)
