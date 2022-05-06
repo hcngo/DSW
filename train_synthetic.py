@@ -119,11 +119,7 @@ def trainInitIPTW(train_loader, val_loader,test_loader, model, epochs, optimizer
         # validation
         print('Validation:')
 
-        try:
-            pehe_val, _, mse_val, loss_val = model_eval(model, val_loader, criterion, eval_use_cuda=use_cuda)
-        except Exception as e:
-            print(f"Skip eval for epoch={epoch} due to exception={e} ")
-            continue
+        pehe_val, _, mse_val, loss_val = model_eval(model, val_loader, criterion, eval_use_cuda=use_cuda)
 
         # if pehe_val < best_pehe_val:
         #     best_pehe_val = pehe_val
