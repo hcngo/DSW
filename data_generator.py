@@ -4,7 +4,7 @@ import pandas as pd
 import numpy as np
 import json
 from datetime import datetime
-from constants import ICUID, HID, CHARTTIME, NUMBER_OF_INTERVALS, TIME_STEP, MAPPING, ALL_MAPPING, LABS, GCS, UO, VITALS
+from constants import ICUID, HID, CHARTTIME, NUMBER_OF_INTERVALS, TIME_STEP, MAPPING, ALL_MAPPING, LABS, GCS, UO, VITALS, STATIC_VARIABLES
 import sys
 
 option = sys.argv[1] if len(sys.argv) > 1 else None
@@ -105,7 +105,7 @@ if option == "static" or option is None:
   # save each patient demographic details to static.npy file
   for id in list(static_df[HID]):
     patient = static_df[static_df[HID] == id]
-    patient = patient.loc[:, patient.columns!=HID]
+    patient = patient.loc[:, patient.columns!=HID][STATIC_VARIABLES]
     np.save('./data/static/{}.static.npy'.format(id), patient.to_numpy()[0])
 
 if option == "variables" or option is None:

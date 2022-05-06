@@ -10,6 +10,7 @@ UO = "uo"
 
 NUMBER_OF_INTERVALS = 10 # number of time steps
 TIME_STEP = datetime.timedelta(hours=3) # time interval for each step in hour
+STATIC_VARIABLES = ["admission_age", "gender", "white", "black", "hispanic", "asian", "other", "metastatic_cancer", "diabetes_complicated", "height_first", "weight_first", "bmi"]
 MAPPING = {
     LABS: {
         'HEMOGLOBIN':'hemoglobin',
