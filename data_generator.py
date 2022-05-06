@@ -4,7 +4,7 @@ import pandas as pd
 import numpy as np
 import json
 from datetime import datetime
-from constants import ICUID, HID, CHARTTIME, NUMBER_OF_INTERVALS, TIME_STEP, MAPPING, ALL_MAPPING
+from constants import ICUID, HID, CHARTTIME, NUMBER_OF_INTERVALS, TIME_STEP, MAPPING, ALL_MAPPING, LABS, GCS, UO, VITALS
 import sys
 
 option = sys.argv[1] if len(sys.argv) > 1 else None
@@ -31,8 +31,8 @@ if option == "treatments" or option is None:
   hadm_id_sepsis = list(icu2hadm.values())
 
   #------- generating treatment/{treatment_option}/{ID}.npy files ------#
-  vaso_df = pd.read_csv('./data/vaso_durations.csv')
-  vent_df = pd.read_csv('./data/vent_durations.csv')
+  vaso_df = pd.read_csv('./data/vaso_durations.csv', parse_dates=["starttime"])
+  vent_df = pd.read_csv('./data/vent_durations.csv', parse_dates=["starttime"])
   # prune to sepsis3 cohort only
   vaso_df = vaso_df[vaso_df[ICUID].isin(icu_id_sepsis)]
   vent_df = vent_df[vent_df[ICUID].isin(icu_id_sepsis)]
@@ -40,19 +40,29 @@ if option == "treatments" or option is None:
   vaso_df[HID] = vaso_df[ICUID].map(icu2hadm)
   vent_df[HID] = vent_df[ICUID].map(icu2hadm)
 
+  treatment_hids = {"vaso": set(vaso_df[HID]), "vent": set(vent_df[HID])}
+
   # save each patient demographic details to static.npy file
   for treatment_option, df in [('vaso', vaso_df), ('vent', vent_df)]:
-    for id in list(vaso_df[HID]):
+    print(f"processing {len(treatment_hids[treatment_option])} treatment records treatment_option={treatment_option}")
+    for id in treatment_hids[treatment_option]:
       patient = df[df[HID] == id]
-      patient = patient['duration_hours'].to_numpy()
-      # adjust length of arr st it matches the expected A format
-      if len(patient) < 10:
-        zeros = np.zeros(10-len(patient))
-        patient = np.append(patient, zeros)
-      elif len(patient) > 10:
-        patient = patient[:10]
-      # patient = patient.reshape((10, 1))
-      np.save('./data/treatment/{}/{}.npy'.format(treatment_option, id), patient)
+
+      first_treatment_time = patient["starttime"].min().replace(minute=0, second=0, microsecond=0)
+
+      vals = []
+
+      for i in range(NUMBER_OF_INTERVALS):
+        start_time = (first_treatment_time + i * TIME_STEP)
+        end_time = (first_treatment_time + (i + 1) * TIME_STEP)
+        time_interval_data = patient[(patient["starttime"] >= start_time) & (patient["starttime"] < end_time)]
+        v = time_interval_data["duration_hours"].sum()
+        if np.isnan(v):
+          v = 0
+        vals.append(v)
+
+      np.save('./data/treatment/{}/{}.npy'.format(treatment_option, id), np.array(vals))
+      print(f"record hid={id} treatment is saved to data folder")
 
 # hadm ids for sepsis patient in MIMIC-III
 icu2hadm = pd.read_json('./data/icu_hadm_dict.json', typ='series').to_dict()
@@ -119,17 +129,15 @@ if option == "variables" or option is None:
   gcs_df[HID] = gcs_df[ICUID].map(icu2hadm)
   uo_df[HID] = uo_df[ICUID].map(icu2hadm)
 
+  data_bag = {LABS: labs_df, VITALS: vitals_df, GCS: gcs_df, UO: uo_df}
+  data_means = {}  
   # Use HID as the index
-  vitals_df.set_index(HID)
-  labs_df.set_index(HID)
-  gcs_df.set_index(HID)
-  uo_df.set_index(HID)
+  for type, whole_df in data_bag.items():
+    whole_df.set_index(HID)
+    whole_df.sort_index()
+    data_means[type] = whole_df.mean(numeric_only=True)
 
-  # sort based on HID. Sorting helps with filtering later on
-  vitals_df.sort_index()
-  labs_df.sort_index()
-  gcs_df.sort_index()
-  uo_df.sort_index()
+
 
   # list of hids in the vitals df. We use vitals as it contains the most frequently gathered ICU data
   labs_hids = list(set(vitals_df[HID]))
@@ -140,28 +148,30 @@ if option == "variables" or option is None:
   if end_idx is None:
     end_idx = len(labs_hids)
   print(f"Process sample from start index {start_idx} to end index {end_idx} for {end_idx - start_idx} samples")
+
   for record_idx in range(start_idx, end_idx):
     hid = labs_hids[record_idx]
     # for each hospital admission id, we want to save the patient record containing all the variables
-    patient_vitals = vitals_df[vitals_df[HID] == hid]
-    patient_labs = labs_df[labs_df[HID] == hid]
-    patient_gcs = gcs_df[gcs_df[HID] == hid]
-    patient_uo = uo_df[uo_df[HID] == hid]
-
-    # mean values for all numeric columns
-    vitals_means = patient_vitals.mean(numeric_only=True)
-    labs_means = patient_labs.mean(numeric_only=True)
-    gcs_means = patient_gcs.mean(numeric_only=True)
-    uo_means = patient_uo.mean(numeric_only=True)
+    patient_data = {}
+    patient_means = {}
+    whole_period_means = {}
+    for type, whole_df in data_bag.items():
+      patient_data[type] = whole_df[whole_df[HID] == hid]
+      patient_means[type] = patient_data[type].mean(numeric_only=True)
 
     # patient records corresponding to hid to be saved
-    patient = pd.DataFrame()
+    patient_record_df = pd.DataFrame()
 
     # variable arrays keyed by destination column names
     values = {k:[] for k in ALL_MAPPING.values()}
 
     # get the first charttime in vitals to get the ICU admission time
-    icu_time = patient_vitals[CHARTTIME].min().replace(minute=0, second=0, microsecond=0)
+    icu_time = patient_data[VITALS][CHARTTIME].min().replace(minute=0, second=0, microsecond=0)
+
+    # calculate the means within NUMBER_OF_INTERVALS of TIME_STEP since the first icu_time
+    for type in data_bag:
+      df = patient_data[type]
+      whole_period_means[type] = df[(df[CHARTTIME] >= icu_time) & (df[CHARTTIME] < icu_time + NUMBER_OF_INTERVALS * TIME_STEP)].mean(numeric_only=True)
 
     # times
     time_array = []
@@ -174,25 +184,38 @@ if option == "variables" or option is None:
       time_array.append(start_time)
 
       # data within this time interval
-      labs = patient_labs[(patient_labs[CHARTTIME] >= start_time) & (patient_labs[CHARTTIME] < end_time)]
-      vitals = patient_vitals[(patient_vitals[CHARTTIME] >= start_time) & (patient_vitals[CHARTTIME] < end_time)]
-      gcs = patient_gcs[(patient_gcs[CHARTTIME] >= start_time) & (patient_gcs[CHARTTIME] < end_time)]
-      uo = patient_uo[(patient_uo[CHARTTIME] >= start_time) & (patient_uo[CHARTTIME] < end_time)]
+      interval_data = {}
+      for type in patient_data:
+        df = patient_data[type]
+        interval_data[type] = df[(df[CHARTTIME] >= start_time) & (df[CHARTTIME] < end_time)]
 
       # TODO calculate all the variables within this time interval for this patient record and save to disk
-      for data_type, mapping in MAPPING.items():
-        data = labs if data_type == "labs" else vitals if data_type == "vitals" else gcs if data_type == "gcs" else uo if data_type == "uo" else None
-        overall_mean = labs_means if data_type == "labs" else vitals_means if data_type == "vitals" else gcs_means if data_type == "gcs" else uo_means if data_type == "uo" else None
+      for type, mapping in MAPPING.items():
+        # data = labs if data_type == "labs" else vitals if data_type == "vitals" else gcs if data_type == "gcs" else uo if data_type == "uo" else None
+        # overall_mean = labs_means if data_type == "labs" else vitals_means if data_type == "vitals" else gcs_means if data_type == "gcs" else uo_means if data_type == "uo" else None
         for from_field, to_field in mapping.items():
-          v = data[from_field].mean()
+          v = interval_data[type][from_field].mean()
+          if np.isnan(v) and i > 0:
+            # assume the previous value
+            v = values[to_field][i - 1]
           if np.isnan(v):
-            v = overall_mean[from_field]
+            # get the mean of all the periods (NUMBER_OF_INTERVALS)
+            v = whole_period_means[type][from_field]
+          if np.isnan(v):
+            # get the mean of all the data
+            v = patient_means[type][from_field]
+          if np.isnan(v):
+            v = data_means[type][from_field]
+          
+          if np.isnan(v):
+            raise Exception("v is still NaN!")
+
           values[to_field].append(v)
     
-    patient["step"] = range(NUMBER_OF_INTERVALS)
-    patient["time"] = time_array
+    patient_record_df["step"] = range(NUMBER_OF_INTERVALS)
+    patient_record_df["time"] = time_array
     for to_field, val_array in values.items():
-      patient[to_field] = val_array
+      patient_record_df[to_field] = val_array
 
-    patient.to_csv('./data/x/{}.csv'.format(hid), index=False)
+    patient_record_df.to_csv('./data/x/{}.csv'.format(hid), index=False)
     print(f"record index={record_idx} with hid={hid} is saved to data folder")

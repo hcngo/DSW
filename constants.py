@@ -3,10 +3,15 @@ HID = "hadm_id"
 ICUID = "icustay_id"
 CHARTTIME = "charttime"
 
+LABS = "labs"
+VITALS = "vitals"
+GCS = "gcs"
+UO = "uo"
+
 NUMBER_OF_INTERVALS = 10 # number of time steps
 TIME_STEP = datetime.timedelta(hours=3) # time interval for each step in hour
 MAPPING = {
-    "labs": {
+    LABS: {
         'HEMOGLOBIN':'hemoglobin',
         'CREATININE':'creatinine',
         'HEMATOCRIT':'hematocrit',
@@ -24,7 +29,7 @@ MAPPING = {
         'LACTATE':'lactate',
         'ANIONGAP':'aniongap',
     },
-    "vitals": {
+    VITALS: {
         'HeartRate':'heartrate',
         'SysBP':'sysbp',
         'DiasBP':'diasbp',
@@ -33,10 +38,10 @@ MAPPING = {
         'TempC':'tempc',
         'SpO2':'spo2',
     },
-    "gcs": {
+    GCS: {
         'GCS':'gcs_min',
     },
-    "uo": {
+    UO: {
         'value':'urineoutput',
     }
 }

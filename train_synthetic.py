@@ -52,6 +52,7 @@ def trainInitIPTW(train_loader, val_loader,test_loader, model, epochs, optimizer
                 targets, fr_targets = targets.cuda(), fr_targets.cuda()
 
             ipw_outputs, f_outcome_out, cf_outcome_out, _ = model(x_inputs, x_static_inputs, fr_targets)
+            print("")
             f_treatment = torch.where(fr_targets.sum(1) > 0, torch.Tensor([1]), torch.Tensor([0]))
 
             f_train_outcomes.append(targets[:,0])

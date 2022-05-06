@@ -62,7 +62,9 @@ for j, ID in enumerate(used_ID):
     if os.path.exists(static_file):
         X_static[j] = np.load(static_file, allow_pickle=True)
     else:
-        print(f"No static file hid={ID} file={static_file}")
+        # print(f"No static file hid={ID} file={static_file}")
+        pass
+
 X_static=np.nan_to_num(X_static)
 
 
@@ -72,7 +74,7 @@ for ii, ID in tqdm(enumerate(used_ID)):
     if os.path.exists(treatment_file):
         A[ii, :] = np.load(treatment_file, allow_pickle=True)
     else:
-        print(f"No treatment file hid={ID} file={treatment_file}")
+        # print(f"No treatment file hid={ID} file={treatment_file}")
         A[ii, :] = np.zeros(observation_window//step)
 
 X_mean = np.mean(X_new, axis=(0,1))
@@ -83,7 +85,6 @@ X_static_std = np.std(X_static, axis=0)
 
 X_norm = np.zeros(shape=(len(used_ID),observation_window//step,n_X_features))
 X_static_norm = np.zeros(shape=(len(used_ID),n_X_static_features))
-
 
 for i in range(observation_window//step):
     for j in range(n_X_features):
@@ -193,6 +194,8 @@ for n in tqdm(range(len(used_ID))):
     a = A[n,:]
 
     y = [Y_f_norm[n], Y_cf_norm[n]]
+
+    # print(f"DEBUG hid={ID} x={x} x_static={x_static} a={a} y={y}")
 
     np.save(out_x_file, x)
     np.save(out_static_file, x_static)
