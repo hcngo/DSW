@@ -26,7 +26,7 @@ We need to generate data files using the MIMIC-iii data. These files will be use
 
 ## ICU Stay Ids
 
-Use this [toolkit](https://github.com/alistairewj/sepsis3-mimic/tree/v1.0.0) to generate the `sepsis3-df.csv` by running the `sepsis-3-get-data.ipynb`. Move this file to the [./data](./data) folder. This file will then be used to generate both the `icustay_ids.txt` and `icu_hadm_dict.json` that will be used to generate the semi-synthetic and real world datasets used in `./simulation/pre_mimic.py` and `./simulation/simulate_mimic.py`
+Use this [toolkit](https://github.com/alistairewj/sepsis3-mimic/tree/v1.0.0) to generate the `sepsis3-df.csv` by running the `sepsis-3-get-data.ipynb`. Move this file to the [./data](./data) folder. This file will then be used to generate both the `icustay_ids.txt` and `icu_hadm_dict.json` that will be used to generate the real world datasets used in `./simulation/pre_mimic.py`
 
 To generate the `icustay_ids.txt` and `icu_hadm_dict.json` files, run [data_generator.py](./data_generator.py) using `python data_generation.py`
 
@@ -111,23 +111,12 @@ cd simulation
 python synthetic.py
 ```
 
-### Semi-synthetic dataset
-
-The MIMIC III data had to be preprocessed using [Big Query](https://mimic.mit.edu/docs/gettingstarted/cloud/bigquery/) to format the input data to an expected format by the setup.
-
-```
-cd simulation
-python synthetic_mimic.py
-```
-
 ### MIMIC-III dataset
+First, run `python data_generator.py` to generate the expected csv input files. This is to process, aggregate and format the covariates, static and treatment data.
 
-Obtain the patients data of two treatment-outcome pairs: (1) vasopressor-Meanbp; (2) ventilator-SpO2.
+Second, run `cd simulation & python pre_mimic.py` to generate the expected input values captured as numpy arrays.
 
-```
-cd simulation
-python pre_mimic.py
-```
+In order to train the model, please switch to `mimic` branch and run the training command below.
 
 # Full list of covariates
 
